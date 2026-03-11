@@ -3,9 +3,23 @@
 A minimal, composable, self-improving agent framework built on the Anthropic SDK.
 
 ## Setup
+run pip3 if you have mac or linux os instead of pip
+
 ```bash
 pip install anthropic
 export ANTHROPIC_API_KEY=sk-ant-...
+```
+
+## Setup if using groq
+```bash
+pip install groq
+export GROQ_API_KEY=gsk-...
+```
+
+## Setup if using gemini
+```bash
+pip install google-genai
+export GEMINI_API_KEY=gsk-...
 ```
 
 ## Run a task
