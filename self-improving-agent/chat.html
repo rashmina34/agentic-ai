@@ -1,0 +1,677 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Agent Chat</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:        #0d0d0f;
+    --surface:   #141417;
+    --surface2:  #1c1c21;
+    --border:    #2a2a32;
+    --accent:    #7c6af7;
+    --accent2:   #a78bfa;
+    --green:     #34d399;
+    --yellow:    #fbbf24;
+    --red:       #f87171;
+    --text:      #e8e8f0;
+    --muted:     #6b6b80;
+    --user-bg:   #1e1b3a;
+    --agent-bg:  #141417;
+  }
+
+  html, body {
+    height: 100%;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-size: 14px;
+    line-height: 1.6;
+    overflow: hidden;
+  }
+
+  /* ── Layout ── */
+  .app {
+    display: grid;
+    grid-template-rows: 56px 1fr auto;
+    height: 100vh;
+    max-width: 860px;
+    margin: 0 auto;
+  }
+
+  /* ── Header ── */
+  header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 0 20px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+  }
+
+  .logo {
+    width: 28px; height: 28px;
+    background: var(--accent);
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px;
+  }
+
+  .title {
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: 15px;
+    letter-spacing: 0.02em;
+    color: var(--text);
+  }
+
+  .version-badge {
+    margin-left: 6px;
+    padding: 2px 8px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 0.05em;
+  }
+
+  .status-dot {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    color: var(--muted);
+  }
+
+  .dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--green);
+    box-shadow: 0 0 6px var(--green);
+    animation: pulse 2s infinite;
+  }
+
+  .dot.offline { background: var(--red); box-shadow: 0 0 6px var(--red); animation: none; }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+
+  /* ── Messages ── */
+  .messages {
+    overflow-y: auto;
+    padding: 24px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    scroll-behavior: smooth;
+  }
+
+  .messages::-webkit-scrollbar { width: 4px; }
+  .messages::-webkit-scrollbar-track { background: transparent; }
+  .messages::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  /* ── Message rows ── */
+  .msg-row {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    animation: fadeUp 0.25s ease;
+  }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .msg-row.user { flex-direction: row-reverse; }
+
+  .avatar {
+    width: 30px; height: 30px;
+    border-radius: 8px;
+    flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px;
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+  }
+
+  .avatar.agent {
+    background: linear-gradient(135deg, var(--accent), #5b4fcf);
+    color: white;
+  }
+
+  .avatar.user {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--accent2);
+  }
+
+  .bubble {
+    max-width: 680px;
+    padding: 12px 16px;
+    border-radius: 12px;
+    line-height: 1.65;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+
+  .bubble.agent {
+    background: var(--agent-bg);
+    border: 1px solid var(--border);
+    border-top-left-radius: 2px;
+    color: var(--text);
+  }
+
+  .bubble.user {
+    background: var(--user-bg);
+    border: 1px solid #2e2a50;
+    border-top-right-radius: 2px;
+    color: #c4b5fd;
+  }
+
+  /* ── Tool call badge ── */
+  .tool-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 11px;
+    color: var(--yellow);
+    margin-bottom: 8px;
+    font-family: 'DM Mono', monospace;
+  }
+
+  .tool-badge::before { content: "⚡"; }
+
+  /* ── Typing indicator ── */
+  .typing {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+    padding: 14px 16px;
+    background: var(--agent-bg);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    border-top-left-radius: 2px;
+    width: fit-content;
+  }
+
+  .typing span {
+    width: 6px; height: 6px;
+    background: var(--muted);
+    border-radius: 50%;
+    animation: bounce 1.2s infinite;
+  }
+
+  .typing span:nth-child(2) { animation-delay: 0.15s; }
+  .typing span:nth-child(3) { animation-delay: 0.3s; }
+
+  @keyframes bounce {
+    0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+    30% { transform: translateY(-5px); opacity: 1; }
+  }
+
+  /* ── Welcome screen ── */
+  .welcome {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--muted);
+  }
+
+  .welcome-icon {
+    width: 56px; height: 56px;
+    background: linear-gradient(135deg, var(--accent), #5b4fcf);
+    border-radius: 16px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 24px;
+    box-shadow: 0 8px 32px rgba(124, 106, 247, 0.3);
+  }
+
+  .welcome h2 {
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 22px;
+    color: var(--text);
+  }
+
+  .welcome p { font-size: 13px; max-width: 400px; line-height: 1.7; }
+
+  .suggestions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: center;
+    margin-top: 8px;
+  }
+
+  .suggestion {
+    padding: 8px 14px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    font-size: 12px;
+    color: var(--text);
+    cursor: pointer;
+    transition: all 0.15s;
+    font-family: 'DM Mono', monospace;
+  }
+
+  .suggestion:hover {
+    border-color: var(--accent);
+    color: var(--accent2);
+    background: #1e1b3a;
+  }
+
+  /* ── Input area ── */
+  .input-area {
+    padding: 16px 20px 20px;
+    border-top: 1px solid var(--border);
+    background: var(--surface);
+  }
+
+  .input-row {
+    display: flex;
+    gap: 10px;
+    align-items: flex-end;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 10px 12px;
+    transition: border-color 0.2s;
+  }
+
+  .input-row:focus-within { border-color: var(--accent); }
+
+  textarea {
+    flex: 1;
+    background: transparent;
+    border: none;
+    outline: none;
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-size: 13.5px;
+    line-height: 1.5;
+    resize: none;
+    max-height: 160px;
+    min-height: 22px;
+  }
+
+  textarea::placeholder { color: var(--muted); }
+
+  .send-btn {
+    width: 34px; height: 34px;
+    border-radius: 8px;
+    background: var(--accent);
+    border: none;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    transition: all 0.15s;
+    color: white;
+    font-size: 15px;
+  }
+
+  .send-btn:hover:not(:disabled) { background: var(--accent2); transform: scale(1.05); }
+  .send-btn:disabled { opacity: 0.35; cursor: not-allowed; transform: none; }
+
+  .input-hint {
+    margin-top: 8px;
+    font-size: 11px;
+    color: var(--muted);
+    text-align: center;
+  }
+
+  /* ── Markdown-ish formatting in bubbles ── */
+  .bubble strong { color: var(--accent2); font-weight: 600; }
+  .bubble code {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    padding: 1px 5px;
+    border-radius: 4px;
+    font-size: 12px;
+    color: var(--green);
+  }
+
+  .bubble pre {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px;
+    overflow-x: auto;
+    margin: 8px 0;
+    font-size: 12px;
+    line-height: 1.5;
+    color: var(--green);
+  }
+
+  .cursor {
+    display: inline-block;
+    width: 2px; height: 14px;
+    background: var(--accent);
+    animation: blink 0.8s infinite;
+    vertical-align: middle;
+    margin-left: 1px;
+  }
+
+  @keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- Header -->
+  <header>
+    <div class="logo">🤖</div>
+    <span class="title">Agent Chat</span>
+    <span class="version-badge">v0.2.0 · Llama 3.3</span>
+    <div class="status-dot">
+      <div class="dot" id="statusDot"></div>
+      <span id="statusText">connecting...</span>
+    </div>
+  </header>
+
+  <!-- Messages -->
+  <div class="messages" id="messages">
+    <div class="welcome" id="welcome">
+      <div class="welcome-icon">🤖</div>
+      <h2>What can I help you with?</h2>
+      <p>I can write letters, answer questions, work with files, remember things, and run tasks — just ask.</p>
+      <div class="suggestions">
+        <div class="suggestion" onclick="useSuggestion(this)">✉️ Write an application letter</div>
+        <div class="suggestion" onclick="useSuggestion(this)">📄 Create my CV</div>
+        <div class="suggestion" onclick="useSuggestion(this)">📁 List project files</div>
+        <div class="suggestion" onclick="useSuggestion(this)">🧠 Remember something</div>
+        <div class="suggestion" onclick="useSuggestion(this)">🐍 Write a Python script</div>
+        <div class="suggestion" onclick="useSuggestion(this)">💡 Explain this codebase</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Input -->
+  <div class="input-area">
+    <div class="input-row">
+      <textarea
+        id="input"
+        placeholder="Ask me anything..."
+        rows="1"
+        onkeydown="handleKey(event)"
+        oninput="autoResize(this)"
+      ></textarea>
+      <button class="send-btn" id="sendBtn" onclick="sendMessage()" title="Send (Enter)">
+        ↑
+      </button>
+    </div>
+    <div class="input-hint">Enter to send · Shift+Enter for new line</div>
+  </div>
+
+</div>
+
+<script>
+const API = 'http://localhost:8000';
+let messages = [];
+let isStreaming = false;
+
+// ── Startup: check server health ──────────────────────────────────────────────
+async function checkHealth() {
+  try {
+    const r = await fetch(`${API}/health`);
+    const data = await r.json();
+    const dot = document.getElementById('statusDot');
+    const txt = document.getElementById('statusText');
+    if (data.key) {
+      dot.className = 'dot';
+      txt.textContent = 'Llama 3.3 · ready';
+    } else {
+      dot.className = 'dot offline';
+      txt.textContent = 'GROQ_API_KEY not set';
+    }
+  } catch {
+    document.getElementById('statusDot').className = 'dot offline';
+    document.getElementById('statusText').textContent = 'server offline';
+  }
+}
+checkHealth();
+
+// ── Suggestions ───────────────────────────────────────────────────────────────
+function useSuggestion(el) {
+  const text = el.textContent.replace(/^[^\w]+/, '').trim();
+  document.getElementById('input').value = text;
+  document.getElementById('input').focus();
+  autoResize(document.getElementById('input'));
+}
+
+// ── Auto resize textarea ──────────────────────────────────────────────────────
+function autoResize(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 160) + 'px';
+}
+
+// ── Key handler ───────────────────────────────────────────────────────────────
+function handleKey(e) {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    sendMessage();
+  }
+}
+
+// ── Render simple markdown ────────────────────────────────────────────────────
+function renderMarkdown(text) {
+  return text
+    .replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>')
+    .replace(/`([^`]+)`/g, '<code>$1</code>')
+    .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*([^*]+)\*/g, '<em>$1</em>')
+    .replace(/^#{1,3} (.+)$/gm, '<strong>$1</strong>')
+    .replace(/\n/g, '<br>');
+}
+
+// ── Add message to UI ─────────────────────────────────────────────────────────
+function addMessage(role, content, withCursor = false) {
+  const welcome = document.getElementById('welcome');
+  if (welcome) welcome.remove();
+
+  const msgs = document.getElementById('messages');
+  const row = document.createElement('div');
+  row.className = `msg-row ${role}`;
+
+  const avatar = document.createElement('div');
+  avatar.className = `avatar ${role}`;
+  avatar.textContent = role === 'user' ? 'U' : 'A';
+
+  const bubble = document.createElement('div');
+  bubble.className = `bubble ${role}`;
+  bubble.id = `msg-${Date.now()}`;
+
+  if (role === 'assistant') {
+    bubble.innerHTML = renderMarkdown(content);
+    if (withCursor) {
+      const cur = document.createElement('span');
+      cur.className = 'cursor';
+      cur.id = 'cursor';
+      bubble.appendChild(cur);
+    }
+  } else {
+    bubble.textContent = content;
+  }
+
+  row.appendChild(avatar);
+  row.appendChild(bubble);
+  msgs.appendChild(row);
+  msgs.scrollTop = msgs.scrollHeight;
+  return bubble;
+}
+
+// ── Add typing indicator ──────────────────────────────────────────────────────
+function addTyping() {
+  const welcome = document.getElementById('welcome');
+  if (welcome) welcome.remove();
+
+  const msgs = document.getElementById('messages');
+  const row = document.createElement('div');
+  row.className = 'msg-row assistant';
+  row.id = 'typing-row';
+
+  const avatar = document.createElement('div');
+  avatar.className = 'avatar agent';
+  avatar.textContent = 'A';
+
+  const typing = document.createElement('div');
+  typing.className = 'typing';
+  typing.innerHTML = '<span></span><span></span><span></span>';
+
+  row.appendChild(avatar);
+  row.appendChild(typing);
+  msgs.appendChild(row);
+  msgs.scrollTop = msgs.scrollHeight;
+}
+
+function removeTyping() {
+  const el = document.getElementById('typing-row');
+  if (el) el.remove();
+}
+
+// ── Add tool badge ────────────────────────────────────────────────────────────
+function addToolBadge(bubble, toolName, params) {
+  const badge = document.createElement('div');
+  badge.className = 'tool-badge';
+  const paramStr = Object.entries(params).map(([k,v]) => `${k}=${JSON.stringify(v).slice(0,30)}`).join(', ');
+  badge.textContent = `${toolName}(${paramStr})`;
+  bubble.appendChild(badge);
+  bubble.appendChild(document.createElement('br'));
+}
+
+// ── Send message ──────────────────────────────────────────────────────────────
+async function sendMessage() {
+  if (isStreaming) return;
+  const input = document.getElementById('input');
+  const text = input.value.trim();
+  if (!text) return;
+
+  // Clear input
+  input.value = '';
+  input.style.height = 'auto';
+
+  // Add user message to UI and history
+  addMessage('user', text);
+  messages.push({ role: 'user', content: text });
+
+  // Disable input
+  isStreaming = true;
+  document.getElementById('sendBtn').disabled = true;
+  input.disabled = true;
+
+  // Show typing
+  addTyping();
+
+  try {
+    const response = await fetch(`${API}/chat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ messages }),
+    });
+
+    if (!response.ok) {
+      const err = await response.json();
+      removeTyping();
+      addMessage('assistant', `❌ Error: ${err.detail}`);
+      return;
+    }
+
+    removeTyping();
+    const bubble = addMessage('assistant', '', true);
+    let fullText = '';
+    let hasToolBadge = false;
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+
+      const lines = buffer.split('\n');
+      buffer = lines.pop();
+
+      for (const line of lines) {
+        if (!line.startsWith('data: ')) continue;
+        try {
+          const evt = JSON.parse(line.slice(6));
+
+          if (evt.type === 'tool') {
+            if (!hasToolBadge) {
+              // Remove cursor before badge
+              const cur = document.getElementById('cursor');
+              if (cur) cur.remove();
+              hasToolBadge = true;
+            }
+            addToolBadge(bubble, evt.tool, evt.params);
+            // Re-add cursor after badge
+            const cur2 = document.createElement('span');
+            cur2.className = 'cursor';
+            cur2.id = 'cursor';
+            bubble.appendChild(cur2);
+
+          } else if (evt.type === 'text') {
+            fullText += evt.content;
+            const cur = document.getElementById('cursor');
+            if (cur) {
+              cur.insertAdjacentText('beforebegin', evt.content);
+            } else {
+              bubble.innerHTML = (hasToolBadge ? bubble.innerHTML : '') + renderMarkdown(fullText);
+            }
+            document.getElementById('messages').scrollTop = document.getElementById('messages').scrollHeight;
+
+          } else if (evt.type === 'done') {
+            const cur = document.getElementById('cursor');
+            if (cur) cur.remove();
+            // Final render with full markdown
+            if (!hasToolBadge) {
+              bubble.innerHTML = renderMarkdown(fullText);
+            }
+
+          } else if (evt.type === 'error') {
+            const cur = document.getElementById('cursor');
+            if (cur) cur.remove();
+            bubble.innerHTML = `❌ ${evt.content}`;
+          }
+        } catch {}
+      }
+    }
+
+    messages.push({ role: 'assistant', content: fullText });
+
+  } catch (err) {
+    removeTyping();
+    addMessage('assistant', `❌ Could not connect to server. Is it running?\n\npython server.py`);
+  } finally {
+    isStreaming = false;
+    document.getElementById('sendBtn').disabled = false;
+    input.disabled = false;
+    input.focus();
+  }
+}
+</script>
+</body>
+</html>

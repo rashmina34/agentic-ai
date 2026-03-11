@@ -8,3 +8,9 @@ wheels/
 
 # Virtual environments
 .venv
+
+# Sensitive data - NEVER commit these
+.agent_data/
+*.db
+*.jsonl
+.DS_score
