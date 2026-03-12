@@ -6,540 +6,562 @@
 <title>Agent Chat</title>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
 <style>
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-  :root {
-    --bg:        #0d0d0f;
-    --surface:   #141417;
-    --surface2:  #1c1c21;
-    --border:    #2a2a32;
-    --accent:    #7c6af7;
-    --accent2:   #a78bfa;
-    --green:     #34d399;
-    --yellow:    #fbbf24;
-    --red:       #f87171;
-    --text:      #e8e8f0;
-    --muted:     #6b6b80;
-    --user-bg:   #1e1b3a;
-    --agent-bg:  #141417;
-  }
+:root {
+  --bg:       #0d0d0f;
+  --surface:  #141417;
+  --surface2: #1c1c21;
+  --border:   #2a2a32;
+  --text:     #e8e8f0;
+  --muted:    #6b6b80;
+  --green:    #34d399;
+  --yellow:   #fbbf24;
+  --red:      #f87171;
 
-  html, body {
-    height: 100%;
-    background: var(--bg);
-    color: var(--text);
-    font-family: 'DM Mono', monospace;
-    font-size: 14px;
-    line-height: 1.6;
-    overflow: hidden;
-  }
+  --v1-color: #6b7280;
+  --v2-color: #3b82f6;
+  --v3-color: #8b5cf6;
+}
 
-  /* ── Layout ── */
-  .app {
-    display: grid;
-    grid-template-rows: 56px 1fr auto;
-    height: 100vh;
-    max-width: 860px;
-    margin: 0 auto;
-  }
+html, body { height: 100%; background: var(--bg); color: var(--text); font-family: 'DM Mono', monospace; font-size: 14px; overflow: hidden; }
 
-  /* ── Header ── */
-  header {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 0 20px;
-    border-bottom: 1px solid var(--border);
-    background: var(--surface);
-  }
+.app { display: grid; grid-template-columns: 260px 1fr; grid-template-rows: 100vh; height: 100vh; }
 
-  .logo {
-    width: 28px; height: 28px;
-    background: var(--accent);
-    border-radius: 8px;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 14px;
-  }
+/* ── Sidebar ── */
+.sidebar {
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
 
-  .title {
-    font-family: 'Syne', sans-serif;
-    font-weight: 800;
-    font-size: 15px;
-    letter-spacing: 0.02em;
-    color: var(--text);
-  }
+.sidebar-header {
+  padding: 18px 16px 14px;
+  border-bottom: 1px solid var(--border);
+}
 
-  .version-badge {
-    margin-left: 6px;
-    padding: 2px 8px;
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    border-radius: 20px;
-    font-size: 11px;
-    color: var(--muted);
-    letter-spacing: 0.05em;
-  }
+.logo-row { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; }
+.logo { width: 28px; height: 28px; background: linear-gradient(135deg, #7c6af7, #5b4fcf); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 14px; }
+.app-title { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 15px; }
+.app-sub { font-size: 11px; color: var(--muted); }
 
-  .status-dot {
-    margin-left: auto;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 11px;
-    color: var(--muted);
-  }
+.sidebar-section { padding: 14px 12px 8px; font-size: 10px; color: var(--muted); letter-spacing: 0.1em; text-transform: uppercase; }
 
-  .dot {
-    width: 7px; height: 7px;
-    border-radius: 50%;
-    background: var(--green);
-    box-shadow: 0 0 6px var(--green);
-    animation: pulse 2s infinite;
-  }
+/* ── Version cards ── */
+.version-card {
+  margin: 0 8px 6px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  cursor: pointer;
+  transition: all 0.15s;
+  position: relative;
+}
 
-  .dot.offline { background: var(--red); box-shadow: 0 0 6px var(--red); animation: none; }
+.version-card:hover { border-color: var(--muted); background: var(--surface2); }
 
-  @keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.4; }
-  }
+.version-card.active { background: var(--surface2); }
+.version-card.active[data-v="v0.1.0"] { border-color: var(--v1-color); box-shadow: 0 0 0 1px var(--v1-color)20; }
+.version-card.active[data-v="v0.2.0"] { border-color: var(--v2-color); box-shadow: 0 0 0 1px var(--v2-color)20; }
+.version-card.active[data-v="v0.3.0"] { border-color: var(--v3-color); box-shadow: 0 0 0 1px var(--v3-color)20; }
 
-  /* ── Messages ── */
-  .messages {
-    overflow-y: auto;
-    padding: 24px 20px;
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
-    scroll-behavior: smooth;
-  }
+.version-top { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+.version-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.version-name { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 12px; }
+.version-badge-active {
+  margin-left: auto;
+  padding: 1px 6px;
+  border-radius: 10px;
+  font-size: 10px;
+  background: var(--green);
+  color: #000;
+  font-weight: 600;
+}
+.version-desc { font-size: 11px; color: var(--muted); line-height: 1.5; margin-bottom: 6px; }
+.version-tags { display: flex; flex-wrap: wrap; gap: 4px; }
+.vtag {
+  padding: 2px 6px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-size: 10px;
+  color: var(--muted);
+}
+.vtag.good { color: var(--green); border-color: #34d39930; }
+.vtag.bad  { color: var(--red);   border-color: #f8717130; }
 
-  .messages::-webkit-scrollbar { width: 4px; }
-  .messages::-webkit-scrollbar-track { background: transparent; }
-  .messages::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+/* ── Comparison table ── */
+.compare-table { margin: 0 8px 8px; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+.compare-row { display: grid; grid-template-columns: 1fr 28px 28px 28px; gap: 4px; padding: 5px 8px; font-size: 11px; border-bottom: 1px solid var(--border); align-items: center; }
+.compare-row:last-child { border-bottom: none; }
+.compare-row.header { background: var(--surface2); color: var(--muted); font-size: 10px; }
+.compare-check { text-align: center; font-size: 12px; }
 
-  /* ── Message rows ── */
-  .msg-row {
-    display: flex;
-    gap: 12px;
-    align-items: flex-start;
-    animation: fadeUp 0.25s ease;
-  }
+.sidebar-footer { margin-top: auto; padding: 12px; border-top: 1px solid var(--border); }
+.server-status { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--muted); }
+.sdot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); box-shadow: 0 0 5px var(--green); animation: pulse 2s infinite; }
+.sdot.offline { background: var(--red); box-shadow: 0 0 5px var(--red); animation: none; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
 
-  @keyframes fadeUp {
-    from { opacity: 0; transform: translateY(8px); }
-    to   { opacity: 1; transform: translateY(0); }
-  }
+/* ── Main chat area ── */
+.main { display: grid; grid-template-rows: 48px 1fr auto; overflow: hidden; }
 
-  .msg-row.user { flex-direction: row-reverse; }
+/* ── Top bar ── */
+.topbar {
+  display: flex; align-items: center; gap: 10px;
+  padding: 0 18px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
 
-  .avatar {
-    width: 30px; height: 30px;
-    border-radius: 8px;
-    flex-shrink: 0;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 13px;
-    font-family: 'Syne', sans-serif;
-    font-weight: 700;
-  }
+.active-version-pill {
+  display: flex; align-items: center; gap: 7px;
+  padding: 4px 12px;
+  border-radius: 20px;
+  border: 1px solid var(--border);
+  font-size: 12px;
+  font-family: 'Syne', sans-serif;
+  font-weight: 600;
+  transition: all 0.2s;
+}
 
-  .avatar.agent {
-    background: linear-gradient(135deg, var(--accent), #5b4fcf);
-    color: white;
-  }
+.thinking-bar {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  color: var(--muted);
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+.thinking-bar.visible { opacity: 1; }
+.thinking-dots { display: flex; gap: 3px; }
+.thinking-dots span { width: 4px; height: 4px; border-radius: 50%; background: currentColor; animation: tdot 1.2s infinite; }
+.thinking-dots span:nth-child(2) { animation-delay: 0.15s; }
+.thinking-dots span:nth-child(3) { animation-delay: 0.3s; }
+@keyframes tdot { 0%,60%,100%{transform:translateY(0);opacity:.3} 30%{transform:translateY(-4px);opacity:1} }
 
-  .avatar.user {
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    color: var(--accent2);
-  }
+/* ── Messages ── */
+.messages { overflow-y: auto; padding: 20px 18px; display: flex; flex-direction: column; gap: 18px; scroll-behavior: smooth; }
+.messages::-webkit-scrollbar { width: 3px; }
+.messages::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
 
-  .bubble {
-    max-width: 680px;
-    padding: 12px 16px;
-    border-radius: 12px;
-    line-height: 1.65;
-    white-space: pre-wrap;
-    word-break: break-word;
-  }
+.msg-row { display: flex; gap: 10px; align-items: flex-start; animation: fadeUp 0.2s ease; }
+.msg-row.user { flex-direction: row-reverse; }
+@keyframes fadeUp { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }
 
-  .bubble.agent {
-    background: var(--agent-bg);
-    border: 1px solid var(--border);
-    border-top-left-radius: 2px;
-    color: var(--text);
-  }
+.avatar { width: 28px; height: 28px; border-radius: 8px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 12px; font-family: 'Syne', sans-serif; font-weight: 700; }
+.avatar.agent { color: white; }
+.avatar.user  { background: var(--surface2); border: 1px solid var(--border); color: #a78bfa; }
 
-  .bubble.user {
-    background: var(--user-bg);
-    border: 1px solid #2e2a50;
-    border-top-right-radius: 2px;
-    color: #c4b5fd;
-  }
+.msg-content { display: flex; flex-direction: column; gap: 4px; max-width: 680px; }
 
-  /* ── Tool call badge ── */
-  .tool-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 4px 10px;
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    font-size: 11px;
-    color: var(--yellow);
-    margin-bottom: 8px;
-    font-family: 'DM Mono', monospace;
-  }
+/* ── Version label on message ── */
+.msg-version-label {
+  font-size: 10px;
+  font-family: 'Syne', sans-serif;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  opacity: 0.8;
+}
 
-  .tool-badge::before { content: "⚡"; }
+.bubble {
+  padding: 11px 15px;
+  border-radius: 12px;
+  line-height: 1.65;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.bubble.agent { background: var(--surface); border: 1px solid var(--border); border-top-left-radius: 2px; }
+.bubble.user  { background: #1e1b3a; border: 1px solid #2e2a50; border-top-right-radius: 2px; color: #c4b5fd; }
 
-  /* ── Typing indicator ── */
-  .typing {
-    display: flex;
-    gap: 4px;
-    align-items: center;
-    padding: 14px 16px;
-    background: var(--agent-bg);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    border-top-left-radius: 2px;
-    width: fit-content;
-  }
+/* ── Agent thinking indicator ── */
+.agent-thinking {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 12px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  border-top-left-radius: 2px;
+  font-size: 11px;
+  width: fit-content;
+}
+.agent-thinking .step-badge { padding: 1px 6px; border-radius: 4px; font-size: 10px; font-weight: 600; color: #000; }
 
-  .typing span {
-    width: 6px; height: 6px;
-    background: var(--muted);
-    border-radius: 50%;
-    animation: bounce 1.2s infinite;
-  }
+/* ── Tool badge ── */
+.tool-badge {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 3px 9px;
+  border-radius: 6px;
+  font-size: 11px;
+  border: 1px solid;
+  margin-bottom: 6px;
+  width: fit-content;
+}
 
-  .typing span:nth-child(2) { animation-delay: 0.15s; }
-  .typing span:nth-child(3) { animation-delay: 0.3s; }
+/* ── Step counter on bubble ── */
+.step-info { font-size: 10px; color: var(--muted); margin-top: 4px; }
 
-  @keyframes bounce {
-    0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
-    30% { transform: translateY(-5px); opacity: 1; }
-  }
+/* ── Typing ── */
+.typing { display: flex; gap: 4px; align-items: center; padding: 12px 15px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; border-top-left-radius: 2px; width: fit-content; }
+.typing span { width: 5px; height: 5px; background: var(--muted); border-radius: 50%; animation: bounce 1.2s infinite; }
+.typing span:nth-child(2){animation-delay:.15s} .typing span:nth-child(3){animation-delay:.3s}
+@keyframes bounce{0%,60%,100%{transform:translateY(0);opacity:.4}30%{transform:translateY(-4px);opacity:1}}
 
-  /* ── Welcome screen ── */
-  .welcome {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 16px;
-    text-align: center;
-    padding: 40px 20px;
-    color: var(--muted);
-  }
+/* ── Welcome ── */
+.welcome { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; text-align:center; padding:40px 20px; color:var(--muted); }
+.welcome-icon { width:52px; height:52px; background:linear-gradient(135deg,#7c6af7,#5b4fcf); border-radius:14px; display:flex; align-items:center; justify-content:center; font-size:22px; box-shadow:0 8px 28px rgba(124,106,247,0.3); }
+.welcome h2 { font-family:'Syne',sans-serif; font-weight:700; font-size:20px; color:var(--text); }
+.welcome p { font-size:12px; max-width:380px; line-height:1.7; }
+.suggestions { display:flex; flex-wrap:wrap; gap:7px; justify-content:center; margin-top:6px; }
+.suggestion { padding:7px 13px; background:var(--surface2); border:1px solid var(--border); border-radius:20px; font-size:11px; color:var(--text); cursor:pointer; transition:all 0.15s; font-family:'DM Mono',monospace; }
+.suggestion:hover { border-color:#7c6af7; color:#a78bfa; background:#1e1b3a; }
 
-  .welcome-icon {
-    width: 56px; height: 56px;
-    background: linear-gradient(135deg, var(--accent), #5b4fcf);
-    border-radius: 16px;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 24px;
-    box-shadow: 0 8px 32px rgba(124, 106, 247, 0.3);
-  }
+/* ── Input ── */
+.input-area { padding:14px 18px 18px; border-top:1px solid var(--border); background:var(--surface); }
+.input-row { display:flex; gap:9px; align-items:flex-end; background:var(--surface2); border:1px solid var(--border); border-radius:12px; padding:9px 11px; transition:border-color 0.2s; }
+.input-row:focus-within { border-color:#7c6af7; }
+textarea { flex:1; background:transparent; border:none; outline:none; color:var(--text); font-family:'DM Mono',monospace; font-size:13px; line-height:1.5; resize:none; max-height:140px; min-height:20px; }
+textarea::placeholder { color:var(--muted); }
+.send-btn { width:32px; height:32px; border-radius:8px; background:#7c6af7; border:none; cursor:pointer; display:flex; align-items:center; justify-content:center; flex-shrink:0; transition:all 0.15s; color:white; font-size:14px; }
+.send-btn:hover:not(:disabled) { background:#a78bfa; transform:scale(1.05); }
+.send-btn:disabled { opacity:0.3; cursor:not-allowed; }
+.input-hint { margin-top:7px; font-size:11px; color:var(--muted); text-align:center; }
 
-  .welcome h2 {
-    font-family: 'Syne', sans-serif;
-    font-weight: 700;
-    font-size: 22px;
-    color: var(--text);
-  }
+/* ── Markdown ── */
+.bubble strong { color: #a78bfa; font-weight: 600; }
+.bubble code { background:var(--surface2); border:1px solid var(--border); padding:1px 5px; border-radius:4px; font-size:11px; color:var(--green); }
+.bubble pre { background:var(--surface2); border:1px solid var(--border); border-radius:8px; padding:10px; overflow-x:auto; margin:6px 0; font-size:11px; color:var(--green); }
 
-  .welcome p { font-size: 13px; max-width: 400px; line-height: 1.7; }
-
-  .suggestions {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    justify-content: center;
-    margin-top: 8px;
-  }
-
-  .suggestion {
-    padding: 8px 14px;
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    border-radius: 20px;
-    font-size: 12px;
-    color: var(--text);
-    cursor: pointer;
-    transition: all 0.15s;
-    font-family: 'DM Mono', monospace;
-  }
-
-  .suggestion:hover {
-    border-color: var(--accent);
-    color: var(--accent2);
-    background: #1e1b3a;
-  }
-
-  /* ── Input area ── */
-  .input-area {
-    padding: 16px 20px 20px;
-    border-top: 1px solid var(--border);
-    background: var(--surface);
-  }
-
-  .input-row {
-    display: flex;
-    gap: 10px;
-    align-items: flex-end;
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 10px 12px;
-    transition: border-color 0.2s;
-  }
-
-  .input-row:focus-within { border-color: var(--accent); }
-
-  textarea {
-    flex: 1;
-    background: transparent;
-    border: none;
-    outline: none;
-    color: var(--text);
-    font-family: 'DM Mono', monospace;
-    font-size: 13.5px;
-    line-height: 1.5;
-    resize: none;
-    max-height: 160px;
-    min-height: 22px;
-  }
-
-  textarea::placeholder { color: var(--muted); }
-
-  .send-btn {
-    width: 34px; height: 34px;
-    border-radius: 8px;
-    background: var(--accent);
-    border: none;
-    cursor: pointer;
-    display: flex; align-items: center; justify-content: center;
-    flex-shrink: 0;
-    transition: all 0.15s;
-    color: white;
-    font-size: 15px;
-  }
-
-  .send-btn:hover:not(:disabled) { background: var(--accent2); transform: scale(1.05); }
-  .send-btn:disabled { opacity: 0.35; cursor: not-allowed; transform: none; }
-
-  .input-hint {
-    margin-top: 8px;
-    font-size: 11px;
-    color: var(--muted);
-    text-align: center;
-  }
-
-  /* ── Markdown-ish formatting in bubbles ── */
-  .bubble strong { color: var(--accent2); font-weight: 600; }
-  .bubble code {
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    padding: 1px 5px;
-    border-radius: 4px;
-    font-size: 12px;
-    color: var(--green);
-  }
-
-  .bubble pre {
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 12px;
-    overflow-x: auto;
-    margin: 8px 0;
-    font-size: 12px;
-    line-height: 1.5;
-    color: var(--green);
-  }
-
-  .cursor {
-    display: inline-block;
-    width: 2px; height: 14px;
-    background: var(--accent);
-    animation: blink 0.8s infinite;
-    vertical-align: middle;
-    margin-left: 1px;
-  }
-
-  @keyframes blink {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0; }
-  }
+.cursor { display:inline-block; width:2px; height:13px; background:#7c6af7; animation:blink 0.8s infinite; vertical-align:middle; margin-left:1px; }
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
 </style>
 </head>
 <body>
 <div class="app">
 
-  <!-- Header -->
-  <header>
-    <div class="logo">🤖</div>
-    <span class="title">Agent Chat</span>
-    <span class="version-badge">v0.2.0 · Llama 3.3</span>
-    <div class="status-dot">
-      <div class="dot" id="statusDot"></div>
-      <span id="statusText">connecting...</span>
+  <!-- ── Sidebar ── -->
+  <div class="sidebar">
+    <div class="sidebar-header">
+      <div class="logo-row">
+        <div class="logo">🤖</div>
+        <div>
+          <div class="app-title">Agent Chat</div>
+          <div class="app-sub">Self-Improving · Groq · Llama 3.3</div>
+        </div>
+      </div>
     </div>
-  </header>
 
-  <!-- Messages -->
-  <div class="messages" id="messages">
-    <div class="welcome" id="welcome">
-      <div class="welcome-icon">🤖</div>
-      <h2>What can I help you with?</h2>
-      <p>I can write letters, answer questions, work with files, remember things, and run tasks — just ask.</p>
-      <div class="suggestions">
-        <div class="suggestion" onclick="useSuggestion(this)">✉️ Write an application letter</div>
-        <div class="suggestion" onclick="useSuggestion(this)">📄 Create my CV</div>
-        <div class="suggestion" onclick="useSuggestion(this)">📁 List project files</div>
-        <div class="suggestion" onclick="useSuggestion(this)">🧠 Remember something</div>
-        <div class="suggestion" onclick="useSuggestion(this)">🐍 Write a Python script</div>
-        <div class="suggestion" onclick="useSuggestion(this)">💡 Explain this codebase</div>
+    <div class="sidebar-section">Select Version</div>
+
+    <!-- Version cards -->
+    <div class="version-card active" data-v="v0.1.0" onclick="selectVersion('v0.1.0')">
+      <div class="version-top">
+        <div class="version-dot" style="background:var(--v1-color)"></div>
+        <div class="version-name" style="color:var(--v1-color)">v0.1.0</div>
+        <div class="version-badge-active" id="badge-v0.1.0" style="display:none">ACTIVE</div>
+      </div>
+      <div class="version-desc">Solo agent · Basic ReAct loop</div>
+      <div class="version-tags">
+        <span class="vtag good">ReAct</span>
+        <span class="vtag good">4 tools</span>
+        <span class="vtag bad">no memory</span>
+        <span class="vtag bad">no retry</span>
+      </div>
+    </div>
+
+    <div class="version-card" data-v="v0.2.0" onclick="selectVersion('v0.2.0')">
+      <div class="version-top">
+        <div class="version-dot" style="background:var(--v2-color)"></div>
+        <div class="version-name" style="color:var(--v2-color)">v0.2.0</div>
+        <div class="version-badge-active" id="badge-v0.2.0" style="display:none">ACTIVE</div>
+      </div>
+      <div class="version-desc">Solo agent · SQLite memory · Smart context</div>
+      <div class="version-tags">
+        <span class="vtag good">memory</span>
+        <span class="vtag good">retry</span>
+        <span class="vtag good">7 tools</span>
+        <span class="vtag bad">sequential</span>
+      </div>
+    </div>
+
+    <div class="version-card" data-v="v0.3.0" onclick="selectVersion('v0.3.0')">
+      <div class="version-top">
+        <div class="version-dot" style="background:var(--v3-color)"></div>
+        <div class="version-name" style="color:var(--v3-color)">v0.3.0</div>
+        <div class="version-badge-active" id="badge-v0.3.0" style="display:none">ACTIVE</div>
+      </div>
+      <div class="version-desc">Multi-agent · Parallel · Task planner</div>
+      <div class="version-tags">
+        <span class="vtag good">parallel</span>
+        <span class="vtag good">spawning</span>
+        <span class="vtag good">memory</span>
+        <span class="vtag good">8 tools</span>
+      </div>
+    </div>
+
+    <div class="sidebar-section">Feature Comparison</div>
+    <div class="compare-table">
+      <div class="compare-row header"><span>Feature</span><span style="color:var(--v1-color)">v1</span><span style="color:var(--v2-color)">v2</span><span style="color:var(--v3-color)">v3</span></div>
+      <div class="compare-row"><span>Memory</span><span class="compare-check">❌</span><span class="compare-check">✅</span><span class="compare-check">✅</span></div>
+      <div class="compare-row"><span>Retry</span><span class="compare-check">❌</span><span class="compare-check">✅</span><span class="compare-check">✅</span></div>
+      <div class="compare-row"><span>Context Mgmt</span><span class="compare-check">❌</span><span class="compare-check">✅</span><span class="compare-check">✅</span></div>
+      <div class="compare-row"><span>Parallel</span><span class="compare-check">❌</span><span class="compare-check">❌</span><span class="compare-check">✅</span></div>
+      <div class="compare-row"><span>Spawn Agents</span><span class="compare-check">❌</span><span class="compare-check">❌</span><span class="compare-check">✅</span></div>
+      <div class="compare-row"><span>Tools</span><span class="compare-check" style="font-size:10px">4</span><span class="compare-check" style="font-size:10px">7</span><span class="compare-check" style="font-size:10px">8</span></div>
+    </div>
+
+    <div class="sidebar-footer">
+      <div class="server-status">
+        <div class="sdot" id="sdot"></div>
+        <span id="stext">checking server...</span>
       </div>
     </div>
   </div>
 
-  <!-- Input -->
-  <div class="input-area">
-    <div class="input-row">
-      <textarea
-        id="input"
-        placeholder="Ask me anything..."
-        rows="1"
-        onkeydown="handleKey(event)"
-        oninput="autoResize(this)"
-      ></textarea>
-      <button class="send-btn" id="sendBtn" onclick="sendMessage()" title="Send (Enter)">
-        ↑
-      </button>
+  <!-- ── Main ── -->
+  <div class="main">
+
+    <!-- Topbar -->
+    <div class="topbar">
+      <div class="active-version-pill" id="activePill">
+        <div style="width:8px;height:8px;border-radius:50%;background:var(--v1-color)" id="pillDot"></div>
+        <span id="pillLabel">v0.1.0 · Solo · Naive</span>
+      </div>
+      <div class="thinking-bar" id="thinkingBar">
+        <div class="thinking-dots"><span></span><span></span><span></span></div>
+        <span id="thinkingText">thinking...</span>
+      </div>
     </div>
-    <div class="input-hint">Enter to send · Shift+Enter for new line</div>
+
+    <!-- Messages -->
+    <div class="messages" id="messages">
+      <div class="welcome" id="welcome">
+        <div class="welcome-icon">🤖</div>
+        <h2>What can I help with?</h2>
+        <p>Select a version on the left, then ask anything. Each version has different capabilities.</p>
+        <div class="suggestions">
+          <div class="suggestion" onclick="useSuggestion(this)">✉️ Write an application letter</div>
+          <div class="suggestion" onclick="useSuggestion(this)">📄 Create my CV</div>
+          <div class="suggestion" onclick="useSuggestion(this)">📁 List project files</div>
+          <div class="suggestion" onclick="useSuggestion(this)">🧠 Remember my name is Raj</div>
+          <div class="suggestion" onclick="useSuggestion(this)">🔍 Search my memories</div>
+          <div class="suggestion" onclick="useSuggestion(this)">🐍 Write a Python script</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Input -->
+    <div class="input-area">
+      <div class="input-row">
+        <textarea id="input" placeholder="Ask anything..." rows="1"
+          onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
+        <button class="send-btn" id="sendBtn" onclick="sendMessage()">↑</button>
+      </div>
+      <div class="input-hint">Enter to send · Shift+Enter for new line</div>
+    </div>
   </div>
 
 </div>
 
 <script>
 const API = 'http://localhost:8000';
-let messages = [];
-let isStreaming = false;
+let messages   = [];
+let streaming  = false;
+let curVersion = 'v0.1.0';
 
-// ── Startup: check server health ──────────────────────────────────────────────
+const VERSION_COLORS = {
+  'v0.1.0': '#6b7280',
+  'v0.2.0': '#3b82f6',
+  'v0.3.0': '#8b5cf6',
+};
+
+const VERSION_EMOJIS = {
+  'v0.1.0': '🔵',
+  'v0.2.0': '🟢',
+  'v0.3.0': '🟣',
+};
+
+// ── Health check ──────────────────────────────────────────────────────────────
 async function checkHealth() {
   try {
     const r = await fetch(`${API}/health`);
-    const data = await r.json();
-    const dot = document.getElementById('statusDot');
-    const txt = document.getElementById('statusText');
-    if (data.key) {
-      dot.className = 'dot';
-      txt.textContent = 'Llama 3.3 · ready';
-    } else {
-      dot.className = 'dot offline';
-      txt.textContent = 'GROQ_API_KEY not set';
-    }
+    const d = await r.json();
+    document.getElementById('sdot').className  = d.key ? 'sdot' : 'sdot offline';
+    document.getElementById('stext').textContent = d.key ? 'Server ready' : 'GROQ_API_KEY missing';
   } catch {
-    document.getElementById('statusDot').className = 'dot offline';
-    document.getElementById('statusText').textContent = 'server offline';
+    document.getElementById('sdot').className  = 'sdot offline';
+    document.getElementById('stext').textContent = 'Server offline';
   }
 }
 checkHealth();
+setInterval(checkHealth, 10000);
+
+// ── Version selection ─────────────────────────────────────────────────────────
+function selectVersion(v) {
+  curVersion = v;
+  const color = VERSION_COLORS[v];
+
+  // Update sidebar cards
+  document.querySelectorAll('.version-card').forEach(c => {
+    c.classList.toggle('active', c.dataset.v === v);
+  });
+  document.querySelectorAll('.version-badge-active').forEach(b => b.style.display = 'none');
+  const badge = document.getElementById(`badge-${v}`);
+  if (badge) badge.style.display = 'inline-block';
+
+  // Update topbar pill
+  document.getElementById('pillDot').style.background   = color;
+  document.getElementById('pillLabel').textContent       = getVersionLabel(v);
+  document.getElementById('activePill').style.borderColor = color;
+  document.getElementById('activePill').style.color       = color;
+
+  // Clear chat for new version (fresh context)
+  if (messages.length > 0) {
+    const msgs = document.getElementById('messages');
+    msgs.innerHTML = '';
+    const sep = document.createElement('div');
+    sep.style.cssText = `text-align:center;font-size:11px;color:var(--muted);padding:8px;border-top:1px solid var(--border);`;
+    sep.textContent = `— Switched to ${v} — new conversation —`;
+    msgs.appendChild(sep);
+    messages = [];
+  }
+}
+
+function getVersionLabel(v) {
+  const labels = { 'v0.1.0':'v0.1.0 · Solo · Naive', 'v0.2.0':'v0.2.0 · Solo · Smart', 'v0.3.0':'v0.3.0 · Multi-Agent' };
+  return labels[v] || v;
+}
+
+// Init active badge
+selectVersion('v0.1.0');
 
 // ── Suggestions ───────────────────────────────────────────────────────────────
 function useSuggestion(el) {
   const text = el.textContent.replace(/^[^\w]+/, '').trim();
   document.getElementById('input').value = text;
-  document.getElementById('input').focus();
   autoResize(document.getElementById('input'));
+  document.getElementById('input').focus();
 }
 
-// ── Auto resize textarea ──────────────────────────────────────────────────────
 function autoResize(el) {
   el.style.height = 'auto';
-  el.style.height = Math.min(el.scrollHeight, 160) + 'px';
+  el.style.height = Math.min(el.scrollHeight, 140) + 'px';
 }
 
-// ── Key handler ───────────────────────────────────────────────────────────────
 function handleKey(e) {
-  if (e.key === 'Enter' && !e.shiftKey) {
-    e.preventDefault();
-    sendMessage();
-  }
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
 }
 
-// ── Render simple markdown ────────────────────────────────────────────────────
-function renderMarkdown(text) {
+// ── Markdown ──────────────────────────────────────────────────────────────────
+function md(text) {
   return text
     .replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>')
     .replace(/`([^`]+)`/g, '<code>$1</code>')
     .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
-    .replace(/\*([^*]+)\*/g, '<em>$1</em>')
     .replace(/^#{1,3} (.+)$/gm, '<strong>$1</strong>')
     .replace(/\n/g, '<br>');
 }
 
-// ── Add message to UI ─────────────────────────────────────────────────────────
-function addMessage(role, content, withCursor = false) {
-  const welcome = document.getElementById('welcome');
-  if (welcome) welcome.remove();
+// ── Add message ───────────────────────────────────────────────────────────────
+function removeWelcome() {
+  const w = document.getElementById('welcome');
+  if (w) w.remove();
+}
 
+function addUserMessage(text) {
+  removeWelcome();
   const msgs = document.getElementById('messages');
-  const row = document.createElement('div');
-  row.className = `msg-row ${role}`;
+  const row  = document.createElement('div');
+  row.className = 'msg-row user';
 
-  const avatar = document.createElement('div');
-  avatar.className = `avatar ${role}`;
-  avatar.textContent = role === 'user' ? 'U' : 'A';
+  const av  = document.createElement('div');
+  av.className = 'avatar user';
+  av.textContent = 'U';
+
+  const content = document.createElement('div');
+  content.className = 'msg-content';
+  content.style.alignItems = 'flex-end';
 
   const bubble = document.createElement('div');
-  bubble.className = `bubble ${role}`;
-  bubble.id = `msg-${Date.now()}`;
+  bubble.className = 'bubble user';
+  bubble.textContent = text;
 
-  if (role === 'assistant') {
-    bubble.innerHTML = renderMarkdown(content);
-    if (withCursor) {
-      const cur = document.createElement('span');
-      cur.className = 'cursor';
-      cur.id = 'cursor';
-      bubble.appendChild(cur);
-    }
-  } else {
-    bubble.textContent = content;
-  }
+  content.appendChild(bubble);
+  row.appendChild(av);
+  row.appendChild(content);
+  msgs.appendChild(row);
+  msgs.scrollTop = msgs.scrollHeight;
+}
 
-  row.appendChild(avatar);
-  row.appendChild(bubble);
+function addAgentMessage(version) {
+  removeWelcome();
+  const color = VERSION_COLORS[version] || '#6b7280';
+  const emoji = VERSION_EMOJIS[version] || '🤖';
+  const msgs  = document.getElementById('messages');
+
+  const row = document.createElement('div');
+  row.className = 'msg-row';
+  row.id = 'agent-row-current';
+
+  const av = document.createElement('div');
+  av.className = 'avatar agent';
+  av.style.background = `linear-gradient(135deg, ${color}, ${color}99)`;
+  av.textContent = emoji;
+
+  const content = document.createElement('div');
+  content.className = 'msg-content';
+
+  // Version label
+  const vLabel = document.createElement('div');
+  vLabel.className = 'msg-version-label';
+  vLabel.style.color = color;
+  vLabel.innerHTML = `<span>${version}</span><span style="opacity:0.4">·</span><span style="opacity:0.6">${getVersionLabel(version).split('·').slice(1).join('·').trim()}</span>`;
+
+  const bubble = document.createElement('div');
+  bubble.className = 'bubble agent';
+  bubble.id = 'current-bubble';
+
+  const stepInfo = document.createElement('div');
+  stepInfo.className = 'step-info';
+  stepInfo.id = 'current-step-info';
+
+  content.appendChild(vLabel);
+  content.appendChild(bubble);
+  content.appendChild(stepInfo);
+  row.appendChild(av);
+  row.appendChild(content);
   msgs.appendChild(row);
   msgs.scrollTop = msgs.scrollHeight;
   return bubble;
 }
 
-// ── Add typing indicator ──────────────────────────────────────────────────────
-function addTyping() {
-  const welcome = document.getElementById('welcome');
-  if (welcome) welcome.remove();
+function addTyping(version) {
+  removeWelcome();
+  const color = VERSION_COLORS[version] || '#6b7280';
+  const emoji = VERSION_EMOJIS[version] || '🤖';
+  const msgs  = document.getElementById('messages');
 
-  const msgs = document.getElementById('messages');
   const row = document.createElement('div');
-  row.className = 'msg-row assistant';
+  row.className = 'msg-row';
   row.id = 'typing-row';
 
-  const avatar = document.createElement('div');
-  avatar.className = 'avatar agent';
-  avatar.textContent = 'A';
+  const av = document.createElement('div');
+  av.className = 'avatar agent';
+  av.style.background = `linear-gradient(135deg, ${color}, ${color}99)`;
+  av.textContent = emoji;
 
   const typing = document.createElement('div');
   typing.className = 'typing';
   typing.innerHTML = '<span></span><span></span><span></span>';
 
-  row.appendChild(avatar);
+  row.appendChild(av);
   row.appendChild(typing);
   msgs.appendChild(row);
   msgs.scrollTop = msgs.scrollHeight;
@@ -550,59 +572,73 @@ function removeTyping() {
   if (el) el.remove();
 }
 
+// ── Show thinking step in topbar ──────────────────────────────────────────────
+function showThinking(step, version) {
+  const bar   = document.getElementById('thinkingBar');
+  const color = VERSION_COLORS[version] || '#6b7280';
+  bar.classList.add('visible');
+  bar.style.color = color;
+  document.getElementById('thinkingText').textContent = `step ${step}`;
+}
+
+function hideThinking() {
+  document.getElementById('thinkingBar').classList.remove('visible');
+}
+
 // ── Add tool badge ────────────────────────────────────────────────────────────
-function addToolBadge(bubble, toolName, params) {
+function addToolBadge(bubble, toolName, params, version) {
+  const color = VERSION_COLORS[version] || '#6b7280';
   const badge = document.createElement('div');
   badge.className = 'tool-badge';
-  const paramStr = Object.entries(params).map(([k,v]) => `${k}=${JSON.stringify(v).slice(0,30)}`).join(', ');
-  badge.textContent = `${toolName}(${paramStr})`;
-  bubble.appendChild(badge);
-  bubble.appendChild(document.createElement('br'));
+  badge.style.color = color;
+  badge.style.borderColor = color + '40';
+  badge.style.background  = color + '10';
+  const pStr = Object.entries(params).map(([k,v]) => `${k}=${JSON.stringify(String(v).slice(0,25))}`).join(', ');
+  badge.textContent = `⚡ ${toolName}(${pStr})`;
+  const cur = document.getElementById('cursor');
+  if (cur) { cur.parentNode.insertBefore(badge, cur); cur.parentNode.insertBefore(document.createElement('br'), cur); }
+  else { bubble.appendChild(badge); bubble.appendChild(document.createElement('br')); }
 }
 
 // ── Send message ──────────────────────────────────────────────────────────────
 async function sendMessage() {
-  if (isStreaming) return;
+  if (streaming) return;
   const input = document.getElementById('input');
-  const text = input.value.trim();
+  const text  = input.value.trim();
   if (!text) return;
 
-  // Clear input
   input.value = '';
   input.style.height = 'auto';
 
-  // Add user message to UI and history
-  addMessage('user', text);
+  addUserMessage(text);
   messages.push({ role: 'user', content: text });
 
-  // Disable input
-  isStreaming = true;
+  streaming = true;
   document.getElementById('sendBtn').disabled = true;
   input.disabled = true;
 
-  // Show typing
-  addTyping();
+  addTyping(curVersion);
 
   try {
-    const response = await fetch(`${API}/chat`, {
+    const res = await fetch(`${API}/chat`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ messages }),
+      body: JSON.stringify({ messages, version: curVersion }),
     });
 
-    if (!response.ok) {
-      const err = await response.json();
+    if (!res.ok) {
+      const err = await res.json();
       removeTyping();
-      addMessage('assistant', `❌ Error: ${err.detail}`);
+      addAgentMessage(curVersion);
+      document.getElementById('current-bubble').textContent = `❌ ${err.detail}`;
       return;
     }
 
-    removeTyping();
-    const bubble = addMessage('assistant', '', true);
+    let bubble = null;
     let fullText = '';
-    let hasToolBadge = false;
+    let finalVersion = curVersion;
 
-    const reader = response.body.getReader();
+    const reader  = res.body.getReader();
     const decoder = new TextDecoder();
     let buffer = '';
 
@@ -610,7 +646,6 @@ async function sendMessage() {
       const { done, value } = await reader.read();
       if (done) break;
       buffer += decoder.decode(value, { stream: true });
-
       const lines = buffer.split('\n');
       buffer = lines.pop();
 
@@ -619,42 +654,49 @@ async function sendMessage() {
         try {
           const evt = JSON.parse(line.slice(6));
 
-          if (evt.type === 'tool') {
-            if (!hasToolBadge) {
-              // Remove cursor before badge
-              const cur = document.getElementById('cursor');
-              if (cur) cur.remove();
-              hasToolBadge = true;
+          if (evt.type === 'version_info') {
+            finalVersion = evt.version;
+            removeTyping();
+            bubble = addAgentMessage(evt.version);
+
+          } else if (evt.type === 'thinking') {
+            showThinking(evt.step, evt.version);
+            if (bubble) {
+              const si = document.getElementById('current-step-info');
+              if (si) si.textContent = `thinking · step ${evt.step}`;
             }
-            addToolBadge(bubble, evt.tool, evt.params);
-            // Re-add cursor after badge
-            const cur2 = document.createElement('span');
-            cur2.className = 'cursor';
-            cur2.id = 'cursor';
-            bubble.appendChild(cur2);
+
+          } else if (evt.type === 'tool') {
+            if (bubble) addToolBadge(bubble, evt.tool, evt.params, evt.version);
 
           } else if (evt.type === 'text') {
+            if (!bubble) { removeTyping(); bubble = addAgentMessage(finalVersion); }
             fullText += evt.content;
             const cur = document.getElementById('cursor');
-            if (cur) {
-              cur.insertAdjacentText('beforebegin', evt.content);
-            } else {
-              bubble.innerHTML = (hasToolBadge ? bubble.innerHTML : '') + renderMarkdown(fullText);
-            }
-            document.getElementById('messages').scrollTop = document.getElementById('messages').scrollHeight;
+            if (cur) cur.insertAdjacentText('beforebegin', evt.content);
+            else if (bubble) bubble.innerHTML = md(fullText);
+            document.getElementById('messages').scrollTop = 999999;
 
           } else if (evt.type === 'done') {
+            hideThinking();
             const cur = document.getElementById('cursor');
             if (cur) cur.remove();
-            // Final render with full markdown
-            if (!hasToolBadge) {
-              bubble.innerHTML = renderMarkdown(fullText);
+            if (bubble) {
+              const existingBadges = bubble.querySelectorAll('.tool-badge');
+              const badgeHTML = Array.from(existingBadges).map(b => b.outerHTML + '<br>').join('');
+              bubble.innerHTML = badgeHTML + md(fullText);
             }
+            const si = document.getElementById('current-step-info');
+            if (si) si.textContent = `${finalVersion} · ${evt.steps} step${evt.steps !== 1 ? 's' : ''}`;
+            // Remove id so next message can use it
+            const row = document.getElementById('agent-row-current');
+            if (row) row.removeAttribute('id');
 
           } else if (evt.type === 'error') {
+            hideThinking();
             const cur = document.getElementById('cursor');
             if (cur) cur.remove();
-            bubble.innerHTML = `❌ ${evt.content}`;
+            if (bubble) bubble.textContent = `❌ ${evt.content}`;
           }
         } catch {}
       }
@@ -664,9 +706,11 @@ async function sendMessage() {
 
   } catch (err) {
     removeTyping();
-    addMessage('assistant', `❌ Could not connect to server. Is it running?\n\npython server.py`);
+    hideThinking();
+    const b = addAgentMessage(curVersion);
+    b.textContent = '❌ Cannot connect to server.\n\nRun: python server.py';
   } finally {
-    isStreaming = false;
+    streaming = false;
     document.getElementById('sendBtn').disabled = false;
     input.disabled = false;
     input.focus();
